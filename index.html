@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Futures Trading Bot</title>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            background-color: #121212;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+        }
+        section {
+            margin-top: 30px;
+        }
+        button {
+            background-color: #f0b90b;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        select, input {
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+            background-color: #1c1c1c;
+            color: white;
+        }
+        #balance, #position-info {
+            font-size: 18px;
+            margin: 20px 0;
+        }
+        #trading-status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #0f0;
+            white-space: pre-line;
+        }
+    </style>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<header>
+    My Futures Trading Bot
+</header>
+
+<section id="auth-section">
+    <div id="g_id_onload"
+         data-client_id="32674571586-bh9nc3dt24l955q1llsvt0hoavfku73p.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+
+    <div class="g_id_signin" data-type="standard"></div>
+
+    <div id="user-info" style="display: none;">
+        <p>Signed in as <span id="user-email"></span></p>
+        <button onclick="logout()">Logout</button>
+    </div>
+</section>
+
+<section id="trading-section" style="display:none;">
+    <div id="balance">Balance: Loading...</div>
+
+    <label>Select Symbol:</label><br>
+    <select id="symbol-select"></select><br>
+
+    <label>Trailing Loss %:</label><br>
+    <input type="number" id="trailing-percent" value="0.5" step="0.1"><br><br>
+
+    <button onclick="manualBuy()">Manual Buy</button>
+    <button onclick="manualSell()">Manual Sell</button>
+    <button onclick="startTrailingLoss()">Start Trailing Bot</button>
+    <button onclick="stopTrailingLoss()">Stop Trailing Bot</button>
+
+    <div id="position-info"></div>
+    <div id="trading-status"></div>
+</section>
+
+<script>
+    // --- USER CONFIG ---
+    const allowedEmail = "davidsteph0100@gmail.com"; // <-- CHANGE to your Google email
+    const BYBIT_API_KEY = "qzNSqYXlcTFYs2Tc3u";
+    const BYBIT_API_SECRET = "nchbOODvpVpp89UPs6da3xTe1ikERGpE6Q8p";
+    const BYBIT_API_URL = "https://api.bybit.com";
+    const orderQty = 0.001; // How much to trade
+    const symbolList = [
+        "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "TONUSDT",
+        "DOTUSDT", "TRXUSDT", "LINKUSDT", "MATICUSDT", "LTCUSDT", "SHIBUSDT", "BCHUSDT", "ICPUSDT", "NEARUSDT",
+        "PEPEUSDT", "UNIUSDT", "WIFUSDT", "ETCUSDT", "APTUSDT", "FILUSDT", "STXUSDT", "RNDRUSDT", "ARBUSDT",
+        "TAOUSDT", "OPUSDT", "JUPUSDT", "SUIUSDT", "GRTUSDT", "MKRUSDT", "AAVEUSDT", "INJUSDT", "LDOUSDT",
+        "TIAUSDT", "XLMUSDT", "IMXUSDT", "FDUSDUSDT", "OKBUSD", "SEIUSDT", "VETUSDT", "ENSUSDT", "HBARUSDT",
+        "FLOWUSDT", "SANDUSDT", "AXSUSDT", "EOSUSDT", "THETAUSDT", "XTZUSDT"
+    ]; // You can expand this to full 100 manually if needed
+    // -------------------
+
+    let googleUser = null;
+    let trailingLossActive = false;
+    let entryPrice = 0;
+    let currentSide = "";
+    let tradingSymbol = "BTCUSDT";
+
+    function handleCredentialResponse(response) {
+        const idToken = response.credential;
+        const payload = JSON.parse(atob(idToken.split('.')[1]));
+        const email = payload.email;
+
+        if (email === allowedEmail) {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('trading-section').style.display = 'block';
+            document.getElementById('user-email').innerText = email;
+            googleUser = email;
+            populateSymbolDropdown();
+            fetchBalance();
+        } else {
+            alert('Unauthorized account!');
+        }
+    }
+
+    function populateSymbolDropdown() {
+        const select = document.getElementById('symbol-select');
+        symbolList.forEach(symbol => {
+            const option = document.createElement('option');
+            option.value = symbol;
+            option.textContent = symbol;
+            select.appendChild(option);
+        });
+        select.addEventListener('change', function() {
+            tradingSymbol = this.value;
+        });
+    }
+
+    function logout() {
+        location.reload();
+    }
+
+    async function fetchBalance() {
+        const timestamp = Date.now();
+        const recvWindow = 5000;
+        const endpoint = "/v5/account/wallet-balance";
+        const category = "linear";
+
+        const queryString = `category=${category}&api_key=${BYBIT_API_KEY}&timestamp=${timestamp}&recvWindow=${recvWindow}`;
+        const signature = await sign(queryString);
+
+        const url = `${BYBIT_API_URL}${endpoint}?${queryString}&sign=${signature}`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.retCode === 0) {
+                const balance = parseFloat(data.result.list[0].totalWalletBalance).toFixed(2);
+                document.getElementById('balance').innerText = `Balance: $${balance} USDT`;
+            } else {
+                document.getElementById('balance').innerText = 'Error fetching balance!';
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('balance').innerText = 'API Error!';
+        }
+    }
+
+    async function manualBuy() {
+        currentSide = "Buy";
+        await placeOrder("Buy", orderQty);
+    }
+
+    async function manualSell() {
+        currentSide = "Sell";
+        await placeOrder("Sell", orderQty);
+    }
+
+    async function placeOrder(side, qty) {
+        const timestamp = Date.now();
+        const recvWindow = 5000;
+        const endpoint = "/v5/order/create";
+
+        const body = {
+            category: "linear",
+            symbol: tradingSymbol,
+            side: side,
+            orderType: "Market",
+            qty: qty.toString(),
+            timeInForce: "GoodTillCancel",
+            api_key: BYBIT_API_KEY,
+            timestamp: timestamp,
+            recvWindow: recvWindow
+        };
+
+        const queryString = Object.keys(body).map(key => key + '=' + body[key]).join('&');
+        const signature = await sign(queryString);
+
+        const res = await fetch(`${BYBIT_API_URL}${endpoint}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: queryString + `&sign=${signature}`
+        });
+
+        const data = await res.json();
+        if (data.retCode === 0) {
+            console.log(`Manual ${side} Order Successful`);
+            const price = await getCurrentPrice();
+            if (price) {
+                entryPrice = parseFloat(price);
+                document.getElementById('trading-status').innerText = `${side} order placed at $${entryPrice}`;
+            }
+        } else {
+            console.error("Trade failed", data);
+        }
+    }
+
+    function startTrailingLoss() {
+        if (!entryPrice || !currentSide) {
+            alert("Place a trade first!");
+            return;
+        }
+        trailingLossActive = true;
+        document.getElementById('trading-status').innerText += "\nTrailing Loss Monitoring Started!";
+        monitorTrailingLoss();
+    }
+
+    function stopTrailingLoss() {
+        trailingLossActive = false;
+        document.getElementById('trading-status').innerText += "\nTrailing Loss Bot Stopped.";
+    }
+
+    async function monitorTrailingLoss() {
+        while (trailingLossActive) {
+            const price = await getCurrentPrice();
+            if (!price) return;
+
+            const priceFloat = parseFloat(price);
+            const trailPercent = parseFloat(document.getElementById('trailing-percent').value);
+
+            updatePositionInfo(priceFloat);
+
+            if (currentSide === "Buy") {
+                const triggerPrice = entryPrice * (1 - (trailPercent / 100));
+                if (priceFloat <= triggerPrice) {
+                    console.log("Trailing loss triggered. Re-entering Buy...");
+                    await placeOrder("Buy", orderQty);
+                    entryPrice = priceFloat;
+                }
+            } else if (currentSide === "Sell") {
+                const triggerPrice = entryPrice * (1 + (trailPercent / 100));
+                if (priceFloat >= triggerPrice) {
+                    console.log("Trailing loss triggered. Re-entering Sell...");
+                    await placeOrder("Sell", orderQty);
+                    entryPrice = priceFloat;
+                }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Check every 10 seconds
+        }
+    }
+
+    async function getCurrentPrice() {
+        try {
+            const res = await fetch(`${BYBIT_API_URL}/v5/market/tickers?category=linear&symbol=${tradingSymbol}`);
+            const data = await res.json();
+            return data.result.list[0].lastPrice;
+        } catch (err) {
+            console.error(err);
+            return null;
+        }
+    }
+
+    function updatePositionInfo(currentPrice) {
+        if (!entryPrice) return;
+        const pnlPercent = ((currentPrice - entryPrice) / entryPrice) * 100;
+        const sideText = currentSide === "Buy" ? "Long" : "Short";
+        document.getElementById('position-info').innerText = `Position: ${sideText} ${tradingSymbol}\nEntry: $${entryPrice}\nCurrent: $${currentPrice}\nPnL: ${pnlPercent.toFixed(2)}%`;
+    }
+
+    async function sign(queryString) {
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(BYBIT_API_SECRET);
+        const data = encoder.encode(queryString);
+        const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        const signature = await crypto.subtle.sign("HMAC", cryptoKey, data);
+        return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+</script>
+
+</body>
+</html>
