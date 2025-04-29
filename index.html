@@ -121,7 +121,7 @@
         const allowedEmail = "davidsteph0100@gmail.com";
         const BACKEND_URL = "https://bybit-balance-server.onrender.com";
         const orderQty = 0.001;
-        const symbolList = ["BTCUSDT", "ETHUSDT", "BNBUSDT" /* ... */];
+        const symbolList = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]; // Add your symbols here
 
         // STATE MANAGEMENT
         let googleUser = null;
@@ -155,7 +155,29 @@
             });
         }
 
-        // CORE FUNCTIONS
+        // Populate the dropdown with symbols
+        function populateSymbolDropdown() {
+            const symbolSelect = document.getElementById('symbol-select');
+            symbolList.forEach(symbol => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = symbol;
+                symbolSelect.appendChild(option);
+            });
+        }
+
+        // Fetch balance from the server
+        async function fetchBalance() {
+            try {
+                const data = await fetchWithAuth('/balance');
+                document.getElementById('balance').innerText = `Balance: $${parseFloat(data.balance).toFixed(2)} USDT`;
+            } catch (error) {
+                document.getElementById('balance').className = 'error';
+                document.getElementById('balance').innerText = 'Error fetching balance!';
+            }
+        }
+
+        // Helper function to handle API requests with authentication
         async function fetchWithAuth(url, options = {}) {
             try {
                 const headers = {
@@ -171,16 +193,6 @@
             } catch (error) {
                 console.error('API Error:', error);
                 throw error;
-            }
-        }
-
-        async function fetchBalance() {
-            try {
-                const data = await fetchWithAuth('/balance');
-                document.getElementById('balance').innerText = `Balance: $${parseFloat(data.balance).toFixed(2)} USDT`;
-            } catch (error) {
-                document.getElementById('balance').className = 'error';
-                document.getElementById('balance').innerText = 'Error fetching balance!';
             }
         }
 
@@ -203,7 +215,27 @@
             }
         }
 
-        // ... (other trading functions remain identical to previous implementation)
+        async function manualSell() {
+            try {
+                const data = await fetchWithAuth('/order', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        symbol: tradingSymbol,
+                        side: 'Sell',
+                        qty: orderQty
+                    })
+                });
+                currentSide = "Sell";
+                entryPrice = 0;
+                updatePositionInfo();
+            } catch (error) {
+                console.error('Sell error:', error);
+            }
+        }
+
+        function updatePositionInfo() {
+            document.getElementById('position-info').innerText = `Side: ${currentSide}, Entry Price: $${entryPrice.toFixed(2)}`;
+        }
 
         // INITIALIZATION
         document.addEventListener('DOMContentLoaded', () => {
@@ -211,4 +243,4 @@
         });
     </script>
 </body>
-    </html>
+</html>
