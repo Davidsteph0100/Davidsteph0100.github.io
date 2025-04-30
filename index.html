@@ -1,246 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Futures Trading Bot</title>
-    <style>
-        body {
-            background-color: #0d0d0d;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        header {
-            background-color: #121212;
-            padding: 20px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-bottom: 1px solid #333;
-        }
-        section {
-            margin-top: 30px;
-        }
-        button {
-            background-color: #f0b90b;
-            color: #000;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 5px;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #f8d33a;
-        }
-        button:disabled {
-            background-color: #666;
-            cursor: not-allowed;
-        }
-        select, input {
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: none;
-            background-color: #1c1c1c;
-            color: white;
-            width: 200px;
-        }
-        #balance, #position-info {
-            font-size: 18px;
-            margin: 20px 0;
-            padding: 10px;
-            background-color: #121212;
-            border-radius: 5px;
-        }
-        #trading-status {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #0f0;
-            white-space: pre-line;
-            background-color: #121212;
-            padding: 10px;
-            border-radius: 5px;
-            min-height: 60px;
-        }
-        .error {
-            color: #ff3333;
-        }
-        .loading {
-            color: #aaa;
-            font-style: italic;
-        }
-        #auth-section {
-            text-align: center;
-            margin-top: 50px;
-        }
-        #user-info {
-            margin-top: 20px;
-        }
-    </style>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Futures Trading Bot</title>
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #ffffff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    header {
+      background-color: #121212;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      border-bottom: 1px solid #333;
+    }
+    section {
+      margin-top: 30px;
+    }
+    button {
+      background-color: #f0b90b;
+      color: #000;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 5px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #f8d33a;
+    }
+    button:disabled {
+      background-color: #666;
+      cursor: not-allowed;
+    }
+    select, input {
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      background-color: #1c1c1c;
+      color: white;
+      width: 200px;
+    }
+    #balance, #position-info {
+      font-size: 18px;
+      margin: 20px 0;
+      padding: 10px;
+      background-color: #121212;
+      border-radius: 5px;
+    }
+    #trading-status {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #0f0;
+      white-space: pre-line;
+      background-color: #121212;
+      padding: 10px;
+      border-radius: 5px;
+      min-height: 60px;
+    }
+    .error {
+      color: #ff3333;
+    }
+    .loading {
+      color: #aaa;
+      font-style: italic;
+    }
+    #auth-section {
+      text-align: center;
+      margin-top: 50px;
+    }
+    #user-info {
+      margin-top: 20px;
+    }
+    canvas {
+      background-color: #1c1c1c;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header>
-        My Futures Trading Bot
-    </header>
+  <header>My Futures Trading Bot</header>
 
-    <section id="auth-section">
-        <div id="g_id_onload"
-             data-client_id="32674571586-bh9nc3dt24l955q1llsvt0hoavfku73p.apps.googleusercontent.com"
-             data-callback="handleCredentialResponse">
-        </div>
-        <div class="g_id_signin" data-type="standard"></div>
-        <div id="user-info" style="display: none;">
-            <p>Signed in as <span id="user-email"></span></p>
-            <button onclick="logout()">Logout</button>
-        </div>
-    </section>
+  <section id="auth-section">
+    <div id="g_id_onload"
+         data-client_id="32674571586-bh9nc3dt24l955q1llsvt0hoavfku73p.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+    <div id="user-info" style="display: none;">
+      <p>Signed in as <span id="user-email"></span></p>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </section>
 
-    <section id="trading-section" style="display:none;">
-        <div id="balance" class="loading">Loading balance...</div>
-        <label>Select Symbol:</label><br>
-        <select id="symbol-select"></select><br>
-        <label>Trailing Loss %:</label><br>
-        <input type="number" id="trailing-percent" value="0.5" step="0.1" min="0.1" max="10"><br><br>
-        <button id="manual-buy-btn" onclick="manualBuy()">Manual Buy</button>
-        <button id="manual-sell-btn" onclick="manualSell()">Manual Sell</button>
-        <button id="start-trailing-btn" onclick="startTrailingLoss()">Start Trailing Bot</button>
-        <button id="stop-trailing-btn" onclick="stopTrailingLoss()" disabled>Stop Trailing Bot</button>
-        <div id="position-info"></div>
-        <div id="trading-status">Ready</div>
-    </section>
+  <section id="trading-section" style="display:none;">
+    <div id="balance" class="loading">Loading balance...</div>
+    <label>Select Symbol:</label><br>
+    <select id="symbol-select"></select><br>
+    <label>Trailing Loss %:</label><br>
+    <input type="number" id="trailing-percent" value="0.5" step="0.1" min="0.1" max="10"><br><br>
+    <button id="manual-buy-btn" onclick="manualBuy()">Manual Buy</button>
+    <button id="manual-sell-btn" onclick="manualSell()">Manual Sell</button>
+    <button id="start-trailing-btn" onclick="startTrailingLoss()">Start Trailing Bot</button>
+    <button id="stop-trailing-btn" onclick="stopTrailingLoss()" disabled>Stop Trailing Bot</button>
+    <div id="position-info"></div>
+    <div id="trading-status">Ready</div>
+  </section>
 
-    <script>
-        // CONFIGURATION
-        const allowedEmail = "davidsteph0100@gmail.com";
-        const BACKEND_URL = "https://bybit-balance-server.onrender.com";
-        const orderQty = 0.001;
-        const symbolList = ["BTCUSDT", "ETHUSDT", "BNBUSDT"]; // Add your symbols here
+  <section id="market-overview" style="margin-top: 50px;">
+    <h2>Market Overview</h2>
+    <label>Select Top Crypto:</label><br>
+    <select id="top-coin-select"></select><br><br>
+    <div id="coin-price">Current Price: --</div>
+    <canvas id="price-chart" width="400" height="200"></canvas>
+  </section>
 
-        // STATE MANAGEMENT
-        let googleUser = null;
-        let trailingLossActive = false;
-        let entryPrice = 0;
-        let currentSide = "";
-        let tradingSymbol = "BTCUSDT";
-        let authToken = null;
+  <script>
+    // CONFIGURATION
+    const allowedEmail = "davidsteph0100@gmail.com";
+    const BACKEND_URL = "https://bybit-balance-server.onrender.com";
+    const orderQty = 0.001;
+    const symbolList = ["BTCUSDT", "ETHUSDT", "BNBUSDT"];
 
-        // AUTHENTICATION
-        function handleCredentialResponse(response) {
-            const idToken = response.credential;
-            const payload = JSON.parse(atob(idToken.split('.')[1]));
-            const email = payload.email;
-            authToken = idToken;
+    let authToken = null;
+    let entryPrice = 0;
+    let currentSide = "";
+    let tradingSymbol = "BTCUSDT";
+    let trailingLossActive = false;
 
-            if (email === allowedEmail) {
-                document.getElementById('auth-section').style.display = 'none';
-                document.getElementById('trading-section').style.display = 'block';
-                document.getElementById('user-email').innerText = email;
-                populateSymbolDropdown();
-                fetchBalance();
-            } else {
-                alert('Unauthorized account!');
-            }
-        }
+    function handleCredentialResponse(response) {
+      const idToken = response.credential;
+      const payload = JSON.parse(atob(idToken.split('.')[1]));
+      const email = payload.email;
+      authToken = idToken;
 
-        function logout() {
-            google.accounts.id.revoke(authToken, () => {
-                location.reload();
-            });
-        }
+      if (email === allowedEmail) {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('trading-section').style.display = 'block';
+        document.getElementById('user-email').innerText = email;
+        populateSymbolDropdown();
+        fetchBalance();
+        loadTopCoins();
+      } else {
+        alert('Unauthorized account!');
+      }
+    }
 
-        // Populate the dropdown with symbols
-        function populateSymbolDropdown() {
-            const symbolSelect = document.getElementById('symbol-select');
-            symbolList.forEach(symbol => {
-                const option = document.createElement('option');
-                option.value = symbol;
-                option.textContent = symbol;
-                symbolSelect.appendChild(option);
-            });
-        }
+    function logout() {
+      google.accounts.id.revoke(authToken, () => {
+        location.reload();
+      });
+    }
 
-        // Fetch balance from the server
-        async function fetchBalance() {
-            try {
-                const data = await fetchWithAuth('/balance');
-                document.getElementById('balance').innerText = `Balance: $${parseFloat(data.balance).toFixed(2)} USDT`;
-            } catch (error) {
-                document.getElementById('balance').className = 'error';
-                document.getElementById('balance').innerText = 'Error fetching balance!';
-            }
-        }
+    function populateSymbolDropdown() {
+      const symbolSelect = document.getElementById('symbol-select');
+      symbolList.forEach(symbol => {
+        const option = document.createElement('option');
+        option.value = symbol;
+        option.textContent = symbol;
+        symbolSelect.appendChild(option);
+      });
+    }
 
-        // Helper function to handle API requests with authentication
-        async function fetchWithAuth(url, options = {}) {
-            try {
-                const headers = {
-                    'Authorization': `Bearer ${authToken}`,
-                    ...options.headers
-                };
-                const response = await fetch(`${BACKEND_URL}${url}`, {
-                    ...options,
-                    headers
-                });
-                if (!response.ok) throw new Error('Request failed');
-                return await response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                throw error;
-            }
-        }
+    async function fetchBalance() {
+      try {
+        const data = await fetchWithAuth('/balance');
+        document.getElementById('balance').innerText = `Balance: $${parseFloat(data.balance).toFixed(2)} USDT`;
+      } catch (error) {
+        document.getElementById('balance').className = 'error';
+        document.getElementById('balance').innerText = 'Error fetching balance!';
+      }
+    }
 
-        // TRADING FUNCTIONS
-        async function manualBuy() {
-            try {
-                const data = await fetchWithAuth('/order', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        symbol: tradingSymbol,
-                        side: 'Buy',
-                        qty: orderQty
-                    })
-                });
-                currentSide = "Buy";
-                entryPrice = parseFloat(data.entryPrice);
-                updatePositionInfo();
-            } catch (error) {
-                console.error('Buy error:', error);
-            }
-        }
+    async function fetchWithAuth(url, options = {}) {
+      const headers = {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
+      const response = await fetch(`${BACKEND_URL}${url}`, {
+        ...options,
+        headers
+      });
+      if (!response.ok) throw new Error('Request failed');
+      return await response.json();
+    }
 
-        async function manualSell() {
-            try {
-                const data = await fetchWithAuth('/order', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        symbol: tradingSymbol,
-                        side: 'Sell',
-                        qty: orderQty
-                    })
-                });
-                currentSide = "Sell";
-                entryPrice = 0;
-                updatePositionInfo();
-            } catch (error) {
-                console.error('Sell error:', error);
-            }
-        }
-
-        function updatePositionInfo() {
-            document.getElementById('position-info').innerText = `Side: ${currentSide}, Entry Price: $${entryPrice.toFixed(2)}`;
-        }
-
-        // INITIALIZATION
-        document.addEventListener('DOMContentLoaded', () => {
-            updateButtonStates();
+    async function manualBuy() {
+      try {
+        const data = await fetchWithAuth('/order', {
+          method: 'POST',
+          body: JSON.stringify({
+            symbol: tradingSymbol,
+            side: 'Buy',
+            qty: orderQty
+          })
         });
-    </script>
+        currentSide = "Buy";
+        entryPrice = parseFloat(data.entryPrice);
+        updatePositionInfo();
+      } catch (error) {
+        console.error('Buy error:', error);
+      }
+    }
+
+    async function manualSell() {
+      try {
+        const data = await fetchWithAuth('/order', {
+          method: 'POST',
+          body: JSON.stringify({
+            symbol: tradingSymbol,
+            side: 'Sell',
+            qty: orderQty
+          })
+        });
+        currentSide = "Sell";
+        entryPrice = 0;
+        updatePositionInfo();
+      } catch (error) {
+        console.error('Sell error:', error);
+      }
+    }
+
+    function updatePositionInfo() {
+      document.getElementById('position-info').innerText = `Side: ${currentSide}, Entry Price: $${entryPrice.toFixed(2)}`;
+    }
+
+    // MARKET CHART SECTION
+    const topCoinSelect = document.getElementById('top-coin-select');
+    const coinPriceDiv = document.getElementById('coin-price');
+    let priceChart;
+
+    async function loadTopCoins() {
+      const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1');
+      const coins = await response.json();
+      coins.forEach(coin => {
+        const opt = document.createElement('option');
+        opt.value = coin.id;
+        opt.textContent = `${coin.name} (${coin.symbol.toUpperCase()})`;
+        topCoinSelect.appendChild(opt);
+      });
+    }
+
+    async function loadChartData(coinId) {
+      const response = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=5`);
+      const data = await response.json();
+      const labels = data.prices.map(p => new Date(p[0]).toLocaleDateString());
+      const prices = data.prices.map(p => p[1]);
+      updateChart(labels, prices);
+      const latestPrice = prices[prices.length - 1];
+      const trend = prices[0] < latestPrice ? 'Rising' : 'Falling';
+      coinPriceDiv.innerHTML = `Current Price: $${latestPrice.toFixed(2)} <strong>(${trend})</strong>`;
+    }
+
+    function updateChart(labels, data) {
+      if (priceChart) priceChart.destroy();
+      const ctx = document.getElementById('price-chart').getContext('2d');
+      priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Price (USD)',
+            data: data,
+            fill: false,
+            borderColor: 'gold',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { display: false }
+          }
+        }
+      });
+    }
+
+    topCoinSelect.addEventListener('change', () => {
+      const coinId = topCoinSelect.value;
+      if (coinId) loadChartData(coinId);
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateButtonStates();
+    });
+
+    function updateButtonStates() {
+      // placeholder for trailing loss logic
+    }
+
+    function startTrailingLoss() {
+      trailingLossActive = true;
+      document.getElementById('trading-status').innerText = "Trailing bot started.";
+      document.getElementById('stop-trailing-btn').disabled = false;
+    }
+
+    function stopTrailingLoss() {
+      trailingLossActive = false;
+      document.getElementById('trading-status').innerText = "Trailing bot stopped.";
+      document.getElementById('stop-trailing-btn').disabled = true;
+    }
+  </script>
 </body>
 </html>
